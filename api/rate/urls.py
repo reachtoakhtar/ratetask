@@ -15,13 +15,15 @@ Including another URLconf
 """
 from django.urls import path
 
-from rate.views import PriceView, CurrencyView, PopulateDBView
+from rate.views import PriceView, CurrencyView, PopulateDBView, RateView, RateNullView
 
 app_name = "rate"
 
 
 urlpatterns = [
     path('currencies/', CurrencyView.as_view(), name="currencies"),
-    path('prices/', PriceView.as_view(), name="prices"),
     path('populate_db/', PopulateDBView.as_view(), name="populate_db"),
+    path('prices/', PriceView.as_view(), name="prices"),
+    path('rates/', RateView.as_view(), name="rates"),
+    path('rates_null/', RateNullView.as_view(), name="rates_null"),
 ]
