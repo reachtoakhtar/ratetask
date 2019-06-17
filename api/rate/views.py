@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.generics import CreateAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
-from rate.models import Price
+from rate.models import Price, Region, Port
 
 APP_ID = "c6f23902babe4392adbe0ca00a08f8e1"
 
@@ -15,6 +15,26 @@ class CurrencyView(RetrieveAPIView):
         currencies = requests.get("https://openexchangerates.org/api/currencies.json")
         currencies = currencies.json()
         return Response(currencies, status=status.HTTP_200_OK)
+
+
+class PopulateDBView(CreateAPIView):
+    def create(self, request, *args, **kwargs):
+        china_main, created = Region.objects.get_or_create(slug="china_main", name="China Main", parent_slug=None)
+        northern_europe, created = Region.objects.get_or_create(slug="northern_europe", name="Northern Europe", parent_slug=None)
+        scandinavia = Region.objects.create(slug="scandinavia", name="Scandinavia", parent_slug=northern_europe)
+        norway_north_west = Region.objects.create(slug="norway_north_west", name="Norway North East", parent_slug=scandinavia)
+        norway_south_east = Region.objects.create(slug="norway_south_east", name="Norway South East", parent_slug=scandinavia)
+        norway_south_west = Region.objects.create(slug="norway_south_west", name="Norway South West", parent_slug=scandinavia)
+
+        Port.objects.create(code="NOFRK", name="Fredrikstad", parent_slug=norway_south_east)
+        Port.objects.create(code="NOFUS", name="Fusa", parent_slug=scandinavia)
+        Port.objects.create(code="NOSVG", name="Stavanger", parent_slug=norway_south_west)
+        Port.objects.create(code="FRLRH", name="La Rochelle", parent_slug=norway_north_west)
+        Port.objects.create(code="CNNBO", name="Ningbo", parent_slug=china_main)
+
+        return Response(
+            {"message": "Successfully populated db."},
+            status=status.HTTP_201_CREATED)
 
 
 class PriceView(CreateAPIView):
@@ -55,18 +75,31 @@ class PriceView(CreateAPIView):
         price_obj = Price.objects.last()
         latest_id = 1 if not price_obj else price_obj.pk + 1
 
-        for day in date_list:
-            obj = {
-                "id": latest_id,
-                "orig_code": origin_code,
-                "dest_code": destination_code,
-                "price": price_in_usd,
-                "day": day
-            }
-            price_list.append(Price(**obj))
-            latest_id += 1
+        try:
+            origin_code = Port.objects.get(pk=origin_code)
+            destination_code = Port.objects.get(pk=destination_code)
 
-        Price.objects.bulk_create(price_list)
+            for day in date_list:
+                obj = {
+                    "id": latest_id,
+                    "orig_code": origin_code,
+                    "dest_code": destination_code,
+                    "price": price_in_usd,
+                    "day": day
+                }
+                price_list.append(Price(**obj))
+                latest_id += 1
+
+            Price.objects.bulk_create(price_list)
+
+        except Port.DoesNotExist as e:
+            return Response(
+                {"message": "Invalid orig/dest code."},
+                status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(
+                {"message": "Error"},
+                status=status.HTTP_201_CREATED)
 
         return Response(
             {"message": "Successfully saved prices."},

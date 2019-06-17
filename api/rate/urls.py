@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.urls import path
 
-from rate.views import PriceView, CurrencyView
+from rate.views import PriceView, CurrencyView, PopulateDBView
 
 app_name = "rate"
 
@@ -23,4 +23,5 @@ app_name = "rate"
 urlpatterns = [
     path('currencies/', CurrencyView.as_view(), name="currencies"),
     path('prices/', PriceView.as_view(), name="prices"),
+    path('populate_db/', PopulateDBView.as_view(), name="populate_db"),
 ]
